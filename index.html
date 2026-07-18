@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Cabazes Rentáveis</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#6B1F2E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --wine:#6B1F2E; --wine-dark:#3E1019; --gold:#B8863E; --gold-light:#E3C48B; --gold-soft:#F1E2C4;
+    --cream:#FBF6EC; --cream-2:#F1E8D6; --ink:#2B2015; --ink-soft:#6B5D4C; --white:#FFFFFF;
+    --serif:'Playfair Display', Georgia, serif; --sans:'Manrope', -apple-system, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; font-family:var(--sans); color:var(--ink); background:var(--cream); -webkit-font-smoothing:antialiased; }
+  .page{ max-width:480px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; justify-content:center; padding:32px 24px; }
+  h1{ font-family:var(--serif); font-size:24px; font-weight:800; margin:0 0 4px; text-align:center; }
+  p.sub{ text-align:center; font-size:14px; color:var(--ink-soft); margin:0 0 32px; }
+  .logo{ width:56px; height:56px; border-radius:50%; background:var(--wine); display:flex; align-items:center; justify-content:center; margin:0 auto 16px; }
+  .logo span{ font-family:var(--serif); font-weight:800; font-size:20px; color:var(--gold-light); }
+
+  .field{ margin-bottom:16px; }
+  .field label{ display:block; font-size:13px; font-weight:700; color:var(--ink); margin-bottom:6px; }
+  .field input{
+    width:100%; padding:14px 16px; border:1.5px solid var(--cream-2); border-radius:12px;
+    font-family:var(--sans); font-size:16px; color:var(--ink); background:var(--white);
+  }
+  .field input:focus{ outline:none; border-color:var(--gold); }
+
+  .pass-wrap{ position:relative; }
+  .pass-wrap input{ padding-right:48px; }
+  .pass-toggle{
+    position:absolute; right:12px; top:50%; transform:translateY(-50%); z-index:2;
+    background:none; border:none; cursor:pointer; padding:6px; display:flex; align-items:center; justify-content:center;
+    color:var(--ink-soft);
+  }
+  .pass-toggle:hover{ color:var(--wine); }
+  .pass-toggle svg{ pointer-events:none; }
+
+  .btn{
+    width:100%; padding:15px; border:none; border-radius:14px; font-family:var(--sans);
+    font-weight:700; font-size:16px; cursor:pointer; margin-top:8px;
+  }
+  .btn-primary{ background:var(--wine); color:var(--gold-soft); }
+  .btn-primary:disabled{ opacity:.6; cursor:not-allowed; }
+
+  .switch-mode{ text-align:center; margin-top:20px; font-size:14px; color:var(--ink-soft); }
+  .switch-mode button{ background:none; border:none; color:var(--gold); font-weight:700; font-size:14px; cursor:pointer; font-family:var(--sans); padding:0; }
+
+  .msg{ font-size:13.5px; text-align:center; margin-top:14px; padding:10px; border-radius:10px; display:none; word-break:break-word; }
+  .msg.show{ display:block; }
+  .msg.error{ background:#FDECEC; color:#B3261E; }
+  .msg.success{ background:#E9F3E9; color:#2E5C2E; }
+
+  #register-view{ display:none; }
+
+  #debug-box{
+    display:none; margin-top:24px; padding:10px; border-radius:10px; background:#1c1c1c; color:#7CFC7C;
+    font-family:monospace; font-size:11px; white-space:pre-wrap; word-break:break-word; max-height:180px; overflow:auto;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="logo"><span>CR</span></div>
+  <h1>Cabazes Rentáveis</h1>
+  <p class="sub">Monte, precifique e venda com confiança</p>
+
+  <!-- ============ ENTRAR ============ -->
+  <div id="login-view">
+    <form id="login-form">
+      <div class="field">
+        <label for="login-email">E-mail</label>
+        <input type="email" id="login-email" placeholder="o.seu@email.com" required autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="login-password">Palavra-passe</label>
+        <div class="pass-wrap">
+          <input type="password" id="login-password" placeholder="A sua palavra-passe" required autocomplete="current-password">
+          <button type="button" class="pass-toggle" data-target="login-password" aria-label="Mostrar palavra-passe">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary" id="login-btn">Entrar</button>
+    </form>
+    <p class="switch-mode">Ainda não tem conta? <button type="button" id="go-register">Criar conta</button></p>
+  </div>
+
+  <!-- ============ CRIAR CONTA ============ -->
+  <div id="register-view">
+    <form id="register-form">
+      <div class="field">
+        <label for="register-nome">Nome</label>
+        <input type="text" id="register-nome" placeholder="O seu nome" required autocomplete="name">
+      </div>
+      <div class="field">
+        <label for="register-email">E-mail</label>
+        <input type="email" id="register-email" placeholder="o.seu@email.com" required autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="register-password">Palavra-passe</label>
+        <div class="pass-wrap">
+          <input type="password" id="register-password" placeholder="Crie uma palavra-passe" required minlength="6" autocomplete="new-password">
+          <button type="button" class="pass-toggle" data-target="register-password" aria-label="Mostrar palavra-passe">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary" id="register-btn">Criar conta</button>
+    </form>
+    <p class="switch-mode">Já tem conta? <button type="button" id="go-login">Entrar</button></p>
+  </div>
+
+  <div class="msg" id="msg"></div>
+
+  <!-- Caixa de diagnóstico: só aparece se houver um erro JS real.
+       Serve para veres no telemóvel, sem devtools, o que está a acontecer. -->
+  <div id="debug-box"></div>
+
+</div>
+
+<script>
+  // =====================================================================
+  // Captador de erros visível no ecrã — se algo rebentar, aparece aqui.
+  // Deixa isto ligado enquanto estiveres a depurar; podes remover depois.
+  // =====================================================================
+  function logDebug(text){
+    const box = document.getElementById('debug-box');
+    box.style.display = 'block';
+    box.textContent += text + '\n';
+    try {
+      const acumulado = sessionStorage.getItem('cab_debug_log') || '';
+      sessionStorage.setItem('cab_debug_log', acumulado + '[login] ' + text + '\n');
+    } catch(e){}
+  }
+  window.addEventListener('error', function(e){
+    logDebug('[JS ERROR] ' + e.message + ' (linha ' + e.lineno + ', col ' + e.colno + ')');
+  });
+  window.addEventListener('unhandledrejection', function(e){
+    logDebug('[PROMISE ERROR] ' + (e.reason && e.reason.message ? e.reason.message : e.reason));
+  });
+  logDebug('Script iniciado às ' + new Date().toLocaleTimeString());
+
+  // =====================================================================
+  // 🚩 Credenciais do Supabase
+  // =====================================================================
+  const SUPABASE_URL = 'https://pxbovvmuwoufwonkmlor.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_hqFJmvpgesYa-f7whSfUPA_8aPgEgxD';
+  // =====================================================================
+
+  let supabase = null;
+  try {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    logDebug('Supabase client criado com sucesso.');
+  } catch (err) {
+    logDebug('[ERRO A CRIAR SUPABASE CLIENT] ' + err.message);
+  }
+
+  // ---- Toggle mostrar/esconder password (o "olhinho") ----
+  // Usa addEventListener + data-target em vez de onclick inline, e liga-se
+  // a TODOS os botões .pass-toggle da página de uma vez.
+  const eyeOpenSVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const eyeClosedSVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0112 19c-7 0-11-7-11-7a20.6 20.6 0 015.06-5.94M9.9 4.24A10.4 10.4 0 0112 4c7 0 11 7 11 7a20.6 20.6 0 01-2.66 3.79M14.12 14.12a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+
+  const toggleButtons = document.querySelectorAll('.pass-toggle');
+  logDebug('Botões .pass-toggle encontrados: ' + toggleButtons.length);
+
+  toggleButtons.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      const targetId = btn.getAttribute('data-target');
+      const input = document.getElementById(targetId);
+      if (!input){
+        logDebug('[ERRO] Não encontrei o input com id=' + targetId);
+        return;
+      }
+      const isShowing = input.getAttribute('type') === 'text';
+      if (isShowing){
+        input.setAttribute('type', 'password');
+        btn.innerHTML = eyeOpenSVG;
+      } else {
+        input.setAttribute('type', 'text');
+        btn.innerHTML = eyeClosedSVG;
+      }
+    });
+  });
+
+  // ---- Alternar entre Entrar / Criar conta ----
+  const loginView = document.getElementById('login-view');
+  const registerView = document.getElementById('register-view');
+  document.getElementById('go-register').addEventListener('click', () => {
+    loginView.style.display = 'none';
+    registerView.style.display = 'block';
+    clearMsg();
+  });
+  document.getElementById('go-login').addEventListener('click', () => {
+    registerView.style.display = 'none';
+    loginView.style.display = 'block';
+    clearMsg();
+  });
+
+  // ---- Mensagens ----
+  const msgEl = document.getElementById('msg');
+  function showMsg(text, type){
+    msgEl.textContent = text;
+    msgEl.className = 'msg show ' + type;
+  }
+  function clearMsg(){
+    msgEl.className = 'msg';
+  }
+
+  // ---- Login ----
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearMsg();
+    const btn = document.getElementById('login-btn');
+    btn.disabled = true; btn.textContent = 'A entrar...';
+
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+
+    if (!supabase){
+      showMsg('Erro de configuração: Supabase não foi inicializado.', 'error');
+      btn.disabled = false; btn.textContent = 'Entrar';
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+    btn.disabled = false; btn.textContent = 'Entrar';
+
+    if (error) {
+      showMsg('E-mail ou palavra-passe incorretos. Tente novamente.', 'error');
+      logDebug('[LOGIN ERROR] ' + error.message);
+      return;
+    }
+
+    logDebug('Login OK. data.session existe? ' + !!data.session);
+    const chaves = Object.keys(localStorage).filter(k => k.toLowerCase().includes('sb-') || k.toLowerCase().includes('supabase'));
+    logDebug('Chaves sb-/supabase no localStorage logo após login: ' + JSON.stringify(chaves));
+
+    showMsg('Sessão iniciada! A redirecionar...', 'success');
+    // pequena margem para garantir que o browser gravou a sessão antes de navegar
+    await new Promise(r => setTimeout(r, 400));
+    window.location.href = 'inicio.html';
+  });
+
+  // ---- Criar conta ----
+  document.getElementById('register-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearMsg();
+    const btn = document.getElementById('register-btn');
+    btn.disabled = true; btn.textContent = 'A criar conta...';
+
+    const nome = document.getElementById('register-nome').value.trim();
+    const email = document.getElementById('register-email').value.trim();
+    const password = document.getElementById('register-password').value;
+
+    if (!supabase){
+      showMsg('Erro de configuração: Supabase não foi inicializado.', 'error');
+      btn.disabled = false; btn.textContent = 'Criar conta';
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email, password,
+      options: { data: { nome } }
+    });
+
+    btn.disabled = false; btn.textContent = 'Criar conta';
+
+    if (error) {
+      showMsg('Não foi possível criar a conta: ' + error.message, 'error');
+      return;
+    }
+    showMsg('Conta criada! Verifique o seu e-mail para confirmar.', 'success');
+  });
+</script>
+</body>
+</html>

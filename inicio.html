@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Cabazes Rentáveis — Início</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#6B1F2E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  #debug-box{
+    display:none; position:fixed; bottom:0; left:0; right:0; z-index:999; margin:0; padding:10px;
+    background:#1c1c1c; color:#7CFC7C; font-family:monospace; font-size:11px; white-space:pre-wrap;
+    word-break:break-word; max-height:35vh; overflow:auto;
+  }
+  :root{
+    --wine:#6B1F2E; --wine-dark:#3E1019; --gold:#B8863E; --gold-light:#E3C48B; --gold-soft:#F1E2C4;
+    --cream:#FBF6EC; --cream-2:#F1E8D6; --ink:#2B2015; --ink-soft:#6B5D4C; --white:#FFFFFF;
+    --serif:'Playfair Display', Georgia, serif; --sans:'Manrope', -apple-system, sans-serif;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{ margin:0; height:100%; overscroll-behavior-y:none; }
+  body{ font-family:var(--sans); color:var(--ink); background:var(--cream); -webkit-font-smoothing:antialiased; }
+  a{ text-decoration:none; color:inherit; }
+
+  .app{ max-width:480px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; background:var(--cream); position:relative; }
+
+  /* ---- Loading / gate ---- */
+  #gate{ position:fixed; inset:0; background:var(--cream); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:99; }
+  #gate .spinner{ width:34px; height:34px; border:3px solid var(--cream-2); border-top-color:var(--wine); border-radius:50%; animation:spin .8s linear infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  /* ---- Header ---- */
+  header.top{ padding:20px 22px 16px; display:flex; align-items:center; gap:12px; }
+  header.top .logo{ width:38px; height:38px; border-radius:50%; background:var(--wine); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  header.top .logo span{ font-family:var(--serif); font-weight:800; font-size:14px; color:var(--gold-light); }
+  header.top h1{ font-family:var(--serif); font-size:19px; font-weight:800; margin:0; flex:1; }
+  header.top .logout{ background:none; border:none; color:var(--ink-soft); font-size:12px; font-weight:700; cursor:pointer; font-family:var(--sans); }
+
+  .content{ flex:1; overflow-y:auto; padding:0 22px 100px; }
+
+  .search{ display:flex; align-items:center; gap:10px; border:1px solid var(--cream-2); border-radius:24px; padding:13px 18px; margin-bottom:16px; background:var(--white); }
+  .search input{ border:none; outline:none; font-family:var(--sans); font-size:15px; color:var(--ink); width:100%; background:none; }
+  .search input::placeholder{ color:#8A7A68; }
+
+  .hero-ph{ height:150px; border-radius:16px; background:var(--cream-2); display:flex; align-items:center; justify-content:center; color:var(--ink-soft); font-size:13px; margin-bottom:18px; }
+
+  .cta{ display:block; text-align:center; background:var(--wine); color:var(--gold-light); border-radius:14px; padding:16px; font-weight:700; font-size:16px; margin-bottom:28px; }
+
+  h2.section-title{ font-family:var(--serif); font-size:18px; font-weight:800; margin:0 0 10px; }
+  .tools{ display:flex; flex-direction:column; border-top:1px solid var(--cream-2); }
+  .tool-item{ display:flex; align-items:center; gap:14px; padding:15px 2px; border-bottom:1px solid var(--cream-2); }
+  .tool-item .ico{ width:22px; height:22px; flex-shrink:0; color:var(--wine); }
+  .tool-item p{ font-size:15.5px; font-weight:700; margin:0; }
+
+  /* ---- Bottom nav ---- */
+  nav.bottom{ position:fixed; bottom:0; left:0; right:0; max-width:480px; margin:0 auto; background:var(--white); border-top:1px solid var(--cream-2); display:flex; justify-content:space-around; padding:10px 0 max(10px, env(safe-area-inset-bottom)); }
+  nav.bottom a{ display:flex; flex-direction:column; align-items:center; gap:3px; color:#B8A08A; }
+  nav.bottom a.active{ color:var(--wine); }
+  nav.bottom a span{ font-size:10.5px; font-weight:700; font-family:var(--sans); }
+  nav.bottom svg{ width:21px; height:21px; }
+</style>
+</head>
+<body>
+
+<div id="gate"><div class="spinner"></div></div>
+<div id="debug-box"></div>
+
+<div class="app" id="app" style="display:none;">
+
+  <header class="top">
+    <div class="logo"><span>CR</span></div>
+    <h1 id="greeting">Olá!</h1>
+    <button class="logout" id="logout-btn">Sair</button>
+  </header>
+
+  <div class="content">
+    <div class="search">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A7A68" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="20.5" y1="20.5" x2="16.3" y2="16.3"/></svg>
+      <input type="text" id="search-input" placeholder="Pesquisar cabaz, ocasião...">
+    </div>
+
+    <div class="hero-ph">Foto: cabaz de destaque sazonal</div>
+
+    <a href="categorias.html" class="cta">Ver categorias →</a>
+
+    <h2 class="section-title">Ferramentas</h2>
+    <div class="tools">
+      <a href="custo.html" class="tool-item">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="6" y="3" width="12" height="18" rx="2"/><line x1="9" y1="7" x2="15" y2="7"/><circle cx="9" cy="12" r="0.9" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="0.9" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="0.9" fill="currentColor" stroke="none"/></svg>
+        <p>Calcular Custo</p>
+      </a>
+      <a href="lista-compras.html" class="tool-item">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4.5" cy="6" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.2" fill="currentColor" stroke="none"/></svg>
+        <p>Lista de Compras</p>
+      </a>
+      <a href="textos-venda.html" class="tool-item">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M16.7 3.3a2.2 2.2 0 013.1 3.1L7.5 18.7l-4.2 1 1-4.2z"/></svg>
+        <p>Textos de Venda com IA</p>
+      </a>
+      <a href="simular-vendas.html" class="tool-item">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="4" y1="20" x2="20" y2="20"/><rect x="6.5" y="12" width="3" height="8"/><rect x="11" y="7" width="3" height="13"/><rect x="15.5" y="14.5" width="3" height="5.5"/></svg>
+        <p>Simular Vendas</p>
+      </a>
+      <a href="favoritas.html" class="tool-item">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 20s-7-4.2-9.3-8.3C.9 8.4 3.2 5 6.6 5c2 0 3.5 1.1 4.4 2.4C12 6.1 13.5 5 15.4 5c3.4 0 5.7 3.4 3.9 6.7C19 15.8 12 20 12 20z"/></svg>
+        <p>Cabazes Favoritos</p>
+      </a>
+    </div>
+  </div>
+
+  <nav class="bottom">
+    <a href="inicio.html" class="active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-7 9 7"/><path d="M5 10v9a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1v-9"/></svg>
+      <span>Início</span>
+    </a>
+    <a href="categorias.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9h16l-1.4 9.4a2 2 0 01-2 1.6H7.4a2 2 0 01-2-1.6L4 9z"/><path d="M8 9V7a4 4 0 018 0v2"/></svg>
+      <span>Categorias</span>
+    </a>
+    <a href="custo.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="3" width="12" height="18" rx="2"/><line x1="9" y1="7" x2="15" y2="7"/></svg>
+      <span>Custo</span>
+    </a>
+    <a href="favoritas.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20s-7-4.2-9.3-8.3C.9 8.4 3.2 5 6.6 5c2 0 3.5 1.1 4.4 2.4C12 6.1 13.5 5 15.4 5c3.4 0 5.7 3.4 3.9 6.7C19 15.8 12 20 12 20z"/></svg>
+      <span>Favoritas</span>
+    </a>
+    <a href="ajuda.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.3"/><path d="M9.6 9.4a2.4 2.4 0 014.6.8c0 1.6-2.3 1.9-2.3 3.3"/></svg>
+      <span>Ajuda</span>
+    </a>
+  </nav>
+
+</div>
+
+<script>
+  function logDebug(text){
+    const box = document.getElementById('debug-box');
+    box.style.display = 'block';
+    box.textContent += text + '\n';
+  }
+  window.addEventListener('error', function(e){
+    logDebug('[JS ERROR] ' + e.message + ' (linha ' + e.lineno + ')');
+  });
+  window.addEventListener('unhandledrejection', function(e){
+    logDebug('[PROMISE ERROR] ' + (e.reason && e.reason.message ? e.reason.message : e.reason));
+  });
+
+  logDebug('--- Log herdado do login: ---');
+  try {
+    const logLogin = sessionStorage.getItem('cab_debug_log');
+    if (logLogin){
+      logDebug(logLogin.trim());
+      sessionStorage.removeItem('cab_debug_log');
+    } else {
+      logDebug('(nenhum log guardado pelo login — pode não ter passado por lá, ou é cache antiga)');
+    }
+  } catch(e){}
+  logDebug('--- Log do início: ---');
+
+  const SUPABASE_URL = 'https://pxbovvmuwoufwonkmlor.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_hqFJmvpgesYa-f7whSfUPA_8aPgEgxD';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // Espera a sessão aparecer, com pequenas tentativas — evita a corrida em que
+  // o browser ainda não gravou a sessão no localStorage quando esta página
+  // carrega logo a seguir ao login (window.location.href imediato).
+  async function getSessionComRetries(tentativas, esperaMs){
+    for (let i = 0; i < tentativas; i++){
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) return session;
+      await new Promise(r => setTimeout(r, esperaMs));
+    }
+    return null;
+  }
+
+  // Mostra o que está guardado no localStorage relacionado com o Supabase,
+  // para vermos se a sessão sequer chegou a ser gravada pelo browser.
+  function inspecionarStorage(){
+    const chaves = Object.keys(localStorage).filter(k => k.toLowerCase().includes('sb-') || k.toLowerCase().includes('supabase'));
+    if (chaves.length === 0){
+      logDebug('[STORAGE] Nenhuma chave sb-/supabase encontrada no localStorage.');
+    } else {
+      chaves.forEach(k => {
+        const v = localStorage.getItem(k);
+        logDebug('[STORAGE] ' + k + ' = ' + (v ? v.slice(0, 120) + '...' : '(vazio)'));
+      });
+    }
+  }
+
+  (async () => {
+    logDebug('A verificar sessão... (' + new Date().toLocaleTimeString() + ')');
+    inspecionarStorage();
+    const session = await getSessionComRetries(6, 300); // até ~1.8s de tentativas
+
+    if (!session) {
+      logDebug('Sem sessão encontrada após várias tentativas.');
+      inspecionarStorage();
+      logDebug('--- NÃO vou redirecionar automaticamente, para poderes ler isto. ---');
+      const gate = document.getElementById('gate');
+      const btn = document.createElement('button');
+      btn.textContent = 'Voltar ao login';
+      btn.style.cssText = 'margin-top:16px;padding:12px 20px;border:none;border-radius:10px;background:#6B1F2E;color:#F1E2C4;font-weight:700;cursor:pointer;';
+      btn.onclick = () => window.location.href = 'index.html';
+      gate.appendChild(btn);
+      return;
+    }
+    logDebug('Sessão encontrada para: ' + session.user.email);
+
+    // Ir buscar o nome do utilizador para a saudação
+    let nome = '';
+    try {
+      const { data: perfil, error: erroPerfil } = await supabase
+        .from('utilizadores')
+        .select('nome')
+        .eq('id', session.user.id)
+        .single();
+
+      if (erroPerfil) {
+        logDebug('[ERRO ao buscar perfil] ' + erroPerfil.message);
+      } else {
+        nome = perfil?.nome ? perfil.nome.split(' ')[0] : '';
+        logDebug('Perfil carregado, nome: ' + (nome || '(vazio)'));
+      }
+    } catch (err) {
+      logDebug('[EXCEÇÃO ao buscar perfil] ' + err.message);
+    }
+
+    document.getElementById('greeting').textContent = nome ? `Olá, ${nome}!` : 'Olá!';
+
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    document.getElementById('app').style.flexDirection = 'column';
+  })();
+
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await supabase.auth.signOut();
+    window.location.href = 'index.html';
+  });
+</script>
+</body>
+</html>
